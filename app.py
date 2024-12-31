@@ -13,24 +13,10 @@ class MistralEmbeddings(Embeddings):
     def __init__(self, client, model):
         self.client = client
         self.model = model
-        self.chunk_size = 16000
+        self.chunk_size = 8000  # Approximate number of characters
 
     def chunk_text(self, text: str) -> List[str]:
-        words = text.split()
-        chunks = []
-        current_chunk = []
-        current_size = 0
-        for word in words:
-            if current_size + len(word) > self.chunk_size:
-                chunks.append(" ".join(current_chunk))
-                current_chunk = [word]
-                current_size = len(word)
-            else:
-                current_chunk.append(word)
-                current_size += len(word) + 1
-        if current_chunk:
-            chunks.append(" ".join(current_chunk))
-        return chunks
+        return [text[i:i+self.chunk_size] for i in range(0, len(text), self.chunk_size)]
 
     def embed_documents(self, texts: List[str]) -> List[List[float]]:
         all_embeddings = []
@@ -66,7 +52,7 @@ def get_pdf_text(pdf_docs):
             text += page.extract_text()
     return text
 
-def get_text_chunks(text, chunk_size=10000, chunk_overlap=1000):
+def get_text_chunks(text, chunk_size=5000, chunk_overlap=500):
     splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
     return splitter.split_text(text)
 
