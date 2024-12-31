@@ -4,4 +4,4 @@ langchain
 langchain_community
 faiss-cpu
 python-dotenv
-mistralai
+mistralai==0.4.2
