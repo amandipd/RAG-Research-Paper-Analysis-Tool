@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Research Paper Chatbot</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <!-- Link to external CSS -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+    <div class="chat-container">
+        <h1>Research Paper Chatbot</h1>
+
+        <!-- Chat area -->
+        <div class="chat-box" id="chat-box">
+            <!-- Chat messages will be appended here -->
+        </div>
+
+        <!-- File upload form -->
+        <form id="upload-form" action="/process" method="post" enctype="multipart/form-data">
+            <label for="pdf_files">Upload PDFs:</label>
+            <input type="file" name="pdf_files" multiple>
+            <button type="submit">Process Files</button>
+        </form>
+
+        <!-- Question form -->
+        <form id="ask-form" action="/ask" method="post">
+            <label for="question">Ask a Question:</label>
+            <input type="text" name="question" required>
+            <button type="submit">Ask</button>
+        </form>
+
+        <!-- Loading message -->
+        <div id="loading">Loading... Please wait while we process your files.</div>
+
+    </div>
+
+    <script>
+        $(document).ready(function() {
+            // Function to append messages to chat box
+            function appendMessage(message, type) {
+                const messageClass = type === 'user' ? 'user-message' : 'bot-message';
+                const messageElement = $('<div class="message"></div>').addClass(messageClass).text(message);
+                $('#chat-box').prepend(messageElement);
+                $('#chat-box').scrollTop(0); // Auto-scroll to the bottom
+            }
+
+            // Handle file upload form
+            $('#upload-form').submit(function(event) {
+                event.preventDefault(); // Prevent form from submitting normally
+                var formData = new FormData(this); // Get the form data
+
+                // Show loading message while processing
+                $('#loading').show();
+                appendMessage("Uploading and processing your files...", "user");
+
+                $.ajax({
+                    url: '/process',
+                    type: 'POST',
+                    data: formData,
+                    contentType: false, // Let jQuery set the content type
+                    processData: false, // Let jQuery handle the data
+                    success: function(response) {
+                        // Hide loading message
+                        $('#loading').hide();
+                        appendMessage("Files processed successfully!", "bot");
+                    },
+                    error: function(response) {
+                        // Hide loading message
+                        $('#loading').hide();
+                        appendMessage("Error: " + response.responseJSON.error, "bot");
+                    }
+                });
+            });
+
+            // Handle the question form
+            $('#ask-form').submit(function(event) {
+                event.preventDefault(); // Prevent form from submitting normally
+                var question = $("input[name='question']").val(); // Get the user's question
+
+                // Show loading message while asking the question
+                $('#loading').show();
+                appendMessage(question, "user");
+
+                $.ajax({
+                    url: '/ask',
+                    type: 'POST',
+                    data: { question: question },
+                    success: function(response) {
+                        // Hide loading message
+                        $('#loading').hide();
+                        appendMessage(response.answer, "bot");
+                    },
+                    error: function(response) {
+                        // Hide loading message
+                        $('#loading').hide();
+                        appendMessage("Error: " + response.responseJSON.error, "bot");
+                    }
+                });
+            });
+        });
+    </script>
+
+</body>
+</html>

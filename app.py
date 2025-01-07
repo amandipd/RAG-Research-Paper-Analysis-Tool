@@ -1,4 +1,4 @@
-import streamlit as st
+from flask import Flask, request, render_template, jsonify
 from PyPDF2 import PdfReader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
@@ -9,11 +9,14 @@ from dotenv import load_dotenv
 import os
 from typing import List
 
+app = Flask(__name__)
+
+# Custom Embeddings class
 class MistralEmbeddings(Embeddings):
     def __init__(self, client, model):
         self.client = client
         self.model = model
-        self.chunk_size = 8000  # Approximate number of characters
+        self.chunk_size = 8000
 
     def chunk_text(self, text: str) -> List[str]:
         return [text[i:i+self.chunk_size] for i in range(0, len(text), self.chunk_size)]
@@ -43,10 +46,10 @@ class MistralEmbeddings(Embeddings):
             return [sum(e) / len(e) for e in zip(*chunk_embeddings)]
         return chunk_embeddings[0]
 
+# Helper functions
 def get_pdf_text(pdf_docs):
     text = ""
     for pdf in pdf_docs:
-        pdf.seek(0)
         pdf_reader = PdfReader(pdf)
         for page in pdf_reader.pages:
             text += page.extract_text()
@@ -69,7 +72,7 @@ def create_qa_chain(client, model):
         """,
         input_variables=["context", "question"]
     )
-    
+
     def qa_function(input_data):
         context = "\n".join([doc.page_content for doc in input_data["input_documents"]])
         messages = [
@@ -78,49 +81,59 @@ def create_qa_chain(client, model):
         ]
         response = client.chat(model=model, messages=messages)
         return {"output_text": response.choices[0].message.content}
-    
+
     return qa_function
 
-def main():
-    st.set_page_config(page_title="AI Research Paper Analysis Chatbot")
-    st.title("Chat with Your Research PDFs")
+# Initialize global variables
+load_dotenv()
+api_key = os.getenv("MISTRAL_API_KEY")
+embedding_model = "mistral-embed"
+chat_model = "mistral-tiny"
+client = MistralClient(api_key=api_key)
+embeddings = MistralEmbeddings(client, embedding_model)
+vector_store = None
 
-    load_dotenv()
-    api_key = os.getenv("MISTRAL_API_KEY")
-    embedding_model = "mistral-embed"
-    chat_model = "mistral-tiny"
-    client = MistralClient(api_key=api_key)
-    embeddings = MistralEmbeddings(client, embedding_model)
+@app.route("/")
+def index():
+    return render_template("index.html")
 
-    if 'vector_store' not in st.session_state:
-        st.session_state.vector_store = None
+@app.route("/process", methods=["POST"])
+def process_pdfs():
+    global vector_store
 
-    with st.sidebar:
-        st.header("Upload PDFs")
-        pdf_docs = st.file_uploader("Upload PDF files", type="pdf", accept_multiple_files=True)
-        process_files = st.button("Process Files")
+    pdf_files = request.files.getlist("pdf_files")
+    if not pdf_files:
+        return jsonify({"error": "No PDF files uploaded."}), 400
 
-    if process_files and pdf_docs:
-        with st.spinner("Processing files..."):
-            text = get_pdf_text(pdf_docs)
-            if not text.strip():
-                st.warning("No text found in PDFs. Please check your files.")
-                return
-            chunks = get_text_chunks(text)
-            st.session_state.vector_store = create_vector_store(chunks, embeddings)
-        st.success("Files processed successfully!")
+    try:
+        text = get_pdf_text(pdf_files)
+        if not text.strip():
+            return jsonify({"error": "No text found in PDFs. Please check your files."}), 400
 
-    user_question = st.text_input("Ask a question about the uploaded PDFs")
-    if user_question and st.session_state.vector_store:
-        try:
-            relevant_docs = st.session_state.vector_store.similarity_search(user_question)
-            qa_chain = create_qa_chain(client, chat_model)
-            response = qa_chain({"input_documents": relevant_docs, "question": user_question})
-            st.write("**Answer:**", response["output_text"])
-        except Exception as e:
-            st.error(f"An error occurred: {str(e)}")
-    elif user_question:
-        st.warning("Please upload and process PDF files before asking questions.")
+        chunks = get_text_chunks(text)
+        vector_store = create_vector_store(chunks, embeddings)
+        return jsonify({"message": "Files processed successfully!"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/ask", methods=["POST"])
+def ask_question():
+    global vector_store
+
+    user_question = request.form.get("question")
+    if not user_question:
+        return jsonify({"error": "No question provided."}), 400
+
+    if not vector_store:
+        return jsonify({"error": "Please upload and process PDF files before asking questions."}), 400
+
+    try:
+        relevant_docs = vector_store.similarity_search(user_question)
+        qa_chain = create_qa_chain(client, chat_model)
+        response = qa_chain({"input_documents": relevant_docs, "question": user_question})
+        return jsonify({"answer": response["output_text"]})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
-    main()
+    app.run(debug=True)
