@@ -11,7 +11,7 @@ from typing import List
 
 app = Flask(__name__)
 
-# Custom Embeddings class
+
 class MistralEmbeddings(Embeddings):
     def __init__(self, client, model):
         self.client = client
@@ -27,10 +27,12 @@ class MistralEmbeddings(Embeddings):
             chunks = self.chunk_text(text)
             chunk_embeddings = []
             for chunk in chunks:
-                response = self.client.embeddings(model=self.model, input=[chunk])
+                response = self.client.embeddings(
+                    model=self.model, input=[chunk])
                 chunk_embeddings.append(response.data[0].embedding)
             if len(chunk_embeddings) > 1:
-                avg_embedding = [sum(e) / len(e) for e in zip(*chunk_embeddings)]
+                avg_embedding = [sum(e) / len(e)
+                                 for e in zip(*chunk_embeddings)]
                 all_embeddings.append(avg_embedding)
             else:
                 all_embeddings.extend(chunk_embeddings)
@@ -46,7 +48,7 @@ class MistralEmbeddings(Embeddings):
             return [sum(e) / len(e) for e in zip(*chunk_embeddings)]
         return chunk_embeddings[0]
 
-# Helper functions
+
 def get_pdf_text(pdf_docs):
     text = ""
     for pdf in pdf_docs:
@@ -55,12 +57,16 @@ def get_pdf_text(pdf_docs):
             text += page.extract_text()
     return text
 
+
 def get_text_chunks(text, chunk_size=5000, chunk_overlap=500):
-    splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=chunk_size, chunk_overlap=chunk_overlap)
     return splitter.split_text(text)
+
 
 def create_vector_store(chunks, embeddings):
     return FAISS.from_texts(chunks, embedding=embeddings)
+
 
 def create_qa_chain(client, model):
     prompt = PromptTemplate(
@@ -74,9 +80,11 @@ def create_qa_chain(client, model):
     )
 
     def qa_function(input_data):
-        context = "\n".join([doc.page_content for doc in input_data["input_documents"]])
+        context = "\n".join(
+            [doc.page_content for doc in input_data["input_documents"]])
         messages = [
-            {"role": "system", "content": prompt.format(context=context, question=input_data["question"])},
+            {"role": "system", "content": prompt.format(
+                context=context, question=input_data["question"])},
             {"role": "user", "content": input_data["question"]}
         ]
         response = client.chat(model=model, messages=messages)
@@ -84,7 +92,8 @@ def create_qa_chain(client, model):
 
     return qa_function
 
-# Initialize global variables
+
+# Global variables
 load_dotenv()
 api_key = os.getenv("MISTRAL_API_KEY")
 embedding_model = "mistral-embed"
@@ -93,9 +102,11 @@ client = MistralClient(api_key=api_key)
 embeddings = MistralEmbeddings(client, embedding_model)
 vector_store = None
 
+
 @app.route("/")
 def index():
     return render_template("index.html")
+
 
 @app.route("/process", methods=["POST"])
 def process_pdfs():
@@ -116,6 +127,7 @@ def process_pdfs():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+
 @app.route("/ask", methods=["POST"])
 def ask_question():
     global vector_store
@@ -130,10 +142,12 @@ def ask_question():
     try:
         relevant_docs = vector_store.similarity_search(user_question)
         qa_chain = create_qa_chain(client, chat_model)
-        response = qa_chain({"input_documents": relevant_docs, "question": user_question})
+        response = qa_chain(
+            {"input_documents": relevant_docs, "question": user_question})
         return jsonify({"answer": response["output_text"]})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 
 if __name__ == "__main__":
     app.run(debug=True)

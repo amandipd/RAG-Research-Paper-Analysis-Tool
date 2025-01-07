@@ -1,111 +1,122 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Research Paper Chatbot</title>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <!-- Using Google Fonts Poppins -->
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
-</head>
-<body>
-
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/styles.css') }}"
+    />
+  </head>
+  <body>
     <div class="chat-container">
-        <h1>Research Paper Chatbot</h1>
+      <h1>Research Paper Chatbot</h1>
 
-        <!-- Chat box -->
-        <div class="chat-box" id="chat-box">
-            <!-- Messages will appear here -->
-        </div>
+      <div class="chat-box" id="chat-box">
+        <!-- Messages will appear here -->
+      </div>
 
-        <!-- File upload form -->
-        <form id="upload-form" action="/process" method="post" enctype="multipart/form-data">
-            <label for="pdf_files">Upload PDFs:</label>
-            <input type="file" name="pdf_files" multiple>
-            <button type="submit">Process Files</button>
-        </form>
+      <!-- File upload form -->
+      <form
+        id="upload-form"
+        action="/process"
+        method="post"
+        enctype="multipart/form-data"
+      >
+        <label for="pdf_files">Upload PDFs:</label>
+        <input type="file" name="pdf_files" multiple />
+        <button type="submit">Process Files</button>
+      </form>
 
-        <!-- Question form -->
-        <form id="ask-form" action="/ask" method="post">
-            <label for="question">Ask a Question:</label>
-            <input type="text" name="question" required>
-            <button type="submit">Ask</button>
-        </form>
+      <!-- Question form -->
+      <form id="ask-form" action="/ask" method="post">
+        <label for="question">Ask a Question:</label>
+        <input type="text" name="question" required />
+        <button type="submit">Ask</button>
+      </form>
 
-        <!-- Loading message -->
-        <div id="loading">Loading... Please wait while we process your files.</div>
+      <div id="loading">
+        Loading... Please wait while we process your files.
+      </div>
 
-        <!-- Description -->
-        <div class="description">
-            <p>This chatbot assists in analyzing research papers by answering questions related to the content. Upload PDFs and ask away!</p>
-        </div>
+      <!-- Description -->
+      <div class="description">
+        <p>
+          This chatbot assists in analyzing research papers by answering
+          questions related to the content. Upload PDFs and ask away!
+        </p>
+      </div>
     </div>
 
     <script>
-        $(document).ready(function() {
-            // Append messages to the chat box
-            function appendMessage(message, type) {
-                const messageClass = type === 'user' ? 'user-message' : 'bot-message';
-                const messageElement = $('<div class="message"></div>').addClass(messageClass).text(message);
-                $('#chat-box').prepend(messageElement);
-                $('#chat-box').scrollTop(0); // Scroll to the top
-            }
+      $(document).ready(function () {
+        // Append messages to the chat box
+        function appendMessage(message, type) {
+          const messageClass = type === "user" ? "user-message" : "bot-message";
+          const messageElement = $('<div class="message"></div>')
+            .addClass(messageClass)
+            .text(message);
+          $("#chat-box").prepend(messageElement);
+          $("#chat-box").scrollTop(0);
+        }
 
-            // Handle file upload form submission
-            $('#upload-form').submit(function(event) {
-                event.preventDefault();
-                var formData = new FormData(this);
+        // Handle file upload form submission
+        $("#upload-form").submit(function (event) {
+          event.preventDefault();
+          var formData = new FormData(this);
 
-                // Show loading message while processing
-                $('#loading').show();
-                appendMessage("Uploading and processing your files...", "user");
+          $("#loading").show();
+          appendMessage("Uploading and processing your files...", "user");
 
-                $.ajax({
-                    url: '/process',
-                    type: 'POST',
-                    data: formData,
-                    contentType: false,
-                    processData: false,
-                    success: function(response) {
-                        $('#loading').hide();
-                        appendMessage("Files processed successfully!", "bot");
-                    },
-                    error: function(response) {
-                        $('#loading').hide();
-                        appendMessage("Error: " + response.responseJSON.error, "bot");
-                    }
-                });
-            });
-
-            // Handle asking a question
-            $('#ask-form').submit(function(event) {
-                event.preventDefault();
-                var question = $("input[name='question']").val();
-
-                // Show loading message while asking the question
-                $('#loading').show();
-                appendMessage(question, "user");
-
-                $.ajax({
-                    url: '/ask',
-                    type: 'POST',
-                    data: { question: question },
-                    success: function(response) {
-                        $('#loading').hide();
-                        appendMessage(response.answer, "bot");
-                    },
-                    error: function(response) {
-                        $('#loading').hide();
-                        appendMessage("Error: " + response.responseJSON.error, "bot");
-                    }
-                });
-
-                // Clear the input field for the next question
-                $("input[name='question']").val('');
-            });
+          $.ajax({
+            url: "/process",
+            type: "POST",
+            data: formData,
+            contentType: false,
+            processData: false,
+            success: function (response) {
+              $("#loading").hide();
+              appendMessage("Files processed successfully!", "bot");
+            },
+            error: function (response) {
+              $("#loading").hide();
+              appendMessage("Error: " + response.responseJSON.error, "bot");
+            },
+          });
         });
-    </script>
 
-</body>
+        // Handle asking a question
+        $("#ask-form").submit(function (event) {
+          event.preventDefault();
+          var question = $("input[name='question']").val();
+
+          $("#loading").show();
+          appendMessage(question, "user");
+
+          $.ajax({
+            url: "/ask",
+            type: "POST",
+            data: { question: question },
+            success: function (response) {
+              $("#loading").hide();
+              appendMessage(response.answer, "bot");
+            },
+            error: function (response) {
+              $("#loading").hide();
+              appendMessage("Error: " + response.responseJSON.error, "bot");
+            },
+          });
+
+          // Clear the input field for the next question
+          $("input[name='question']").val("");
+        });
+      });
+    </script>
+  </body>
 </html>
