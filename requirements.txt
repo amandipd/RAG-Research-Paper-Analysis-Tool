@@ -5,3 +5,4 @@ langchain-community
 python-dotenv
 faiss-cpu
 mistralai==0.4.2
+gunicorn
