@@ -1,7 +1,7 @@
 # Interactive AI Research-Paper Analysis Chatbot (In Progress)
 ## Project Link: [Website](https://interactive-ai-research-paper-analysis.onrender.com)
 ### Preview:
-![image]([https://github.com/user-attachments/assets/14ecc3e1-17da-4cc0-8b60-dea300b66266](https://interactive-ai-research-paper-analysis.onrender.com))
+![image](https://github.com/user-attachments/assets/7c347a95-b889-49d6-93f2-e97590a5d117)
 
 ### Brief Description
 This research paper analyzer is a web application created in Streamlit that allows users to interact with uploaded research papers (PDFs) through an AI-powered chatbot. It processes uploaded PDFs by converting them into searchable vector embeddings through FAISS (Facebook AI Similarity Search) indexes and uses the MistralAI API to generate context-based answers. Some examples of questions one may ask to the chatbot can include:
