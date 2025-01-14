@@ -1,7 +1,7 @@
-Flask
+streamlit
 PyPDF2
 langchain
-langchain-community
-python-dotenv
+langchain_community
 faiss-cpu
+python-dotenv
 mistralai==0.4.2
