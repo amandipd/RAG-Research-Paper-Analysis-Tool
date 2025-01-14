@@ -1,10 +1,11 @@
 # Interactive AI Research-Paper Analysis Chatbot
-## Project Link (may take a minute to load): [Website](https://interactive-ai-research-paper-analysis.onrender.com)
+## Project Website: [Website](https://amandipd-interactive-ai-research-paper-analysis-app-7b8koq.streamlit.app)
 ### Preview:
-![image](https://github.com/user-attachments/assets/e5a5c25f-c73b-4323-b5f6-dcb53a2351ce)
+![image](https://github.com/user-attachments/assets/f675a71b-27d0-4dbc-aea8-7043bc1c963a)
+
 
 ## Brief Description
-This research paper analyzer is a full-stack LLM web application built in Flask that allows users to interact with uploaded research papers (PDFs) through an AI-powered chatbot. It processes uploaded PDFs by converting them into searchable vector embeddings through FAISS (Facebook AI Similarity Search) indexes and uses the Mistral AI API to generate context-based answers. Some examples of questions one may ask to the chatbot can include:
+This research paper analyzer is an LLM web application that allows users to interact with uploaded research papers (PDFs) through an AI-powered chatbot. It processes uploaded PDFs by converting them into searchable vector embeddings through FAISS (Facebook AI Similarity Search) indexes and uses the Mistral AI API to generate context-based answers. Some examples of questions one may ask to the chatbot can include:
 
 *What data collection techniques were applied in this study? <br />
 What are the parameters or variables studied? <br />
@@ -41,13 +42,10 @@ MISTRAL_API_KEY=your_api_key_here
 ###
 
 ### 5. Run the Application
-Start the Flask application:
+Start the Streamlit application:
 ```bash
-python app.py
+streamlit run app.py
 ```
-### 5. Access the Application
-Open your browser and navigate to http://127.0.0.1:5000/
-
 ## Tech Stack & Frameworks
-Python, LangChain, Mistral AI API, Flask, FAISS
+Python, LangChain, Mistral AI API, FAISS
 
