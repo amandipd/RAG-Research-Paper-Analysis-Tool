@@ -1,14 +1,16 @@
 from flask import Flask, request, render_template, jsonify
 from PyPDF2 import PdfReader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_community.vectorstores import FAISS
 from langchain.prompts import PromptTemplate
 from langchain.embeddings.base import Embeddings
-from pinecone import Pinecone, ServerlessSpec
+from mistralai.client import MistralClient
 from dotenv import load_dotenv
 import os
 from typing import List
 
 app = Flask(__name__)
+
 
 class MistralEmbeddings(Embeddings):
     def __init__(self, client, model):
@@ -25,10 +27,12 @@ class MistralEmbeddings(Embeddings):
             chunks = self.chunk_text(text)
             chunk_embeddings = []
             for chunk in chunks:
-                response = self.client.embeddings(model=self.model, input=[chunk])
+                response = self.client.embeddings(
+                    model=self.model, input=[chunk])
                 chunk_embeddings.append(response.data[0].embedding)
             if len(chunk_embeddings) > 1:
-                avg_embedding = [sum(e) / len(e) for e in zip(*chunk_embeddings)]
+                avg_embedding = [sum(e) / len(e)
+                                 for e in zip(*chunk_embeddings)]
                 all_embeddings.append(avg_embedding)
             else:
                 all_embeddings.extend(chunk_embeddings)
@@ -55,8 +59,13 @@ def get_pdf_text(pdf_docs):
 
 
 def get_text_chunks(text, chunk_size=5000, chunk_overlap=500):
-    splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=chunk_size, chunk_overlap=chunk_overlap)
     return splitter.split_text(text)
+
+
+def create_vector_store(chunks, embeddings):
+    return FAISS.from_texts(chunks, embedding=embeddings)
 
 
 def create_qa_chain(client, model):
@@ -71,9 +80,11 @@ def create_qa_chain(client, model):
     )
 
     def qa_function(input_data):
-        context = "\n".join([doc.page_content for doc in input_data["input_documents"]])
+        context = "\n".join(
+            [doc.page_content for doc in input_data["input_documents"]])
         messages = [
-            {"role": "system", "content": prompt.format(context=context, question=input_data["question"])},
+            {"role": "system", "content": prompt.format(
+                context=context, question=input_data["question"])},
             {"role": "user", "content": input_data["question"]}
         ]
         response = client.chat(model=model, messages=messages)
@@ -84,27 +95,12 @@ def create_qa_chain(client, model):
 
 # Global variables
 load_dotenv()
-pinecone_api_key = os.getenv("PINECONE_API_KEY")
-pinecone_index_name = "ai-research"
-pinecone_env = "us-east-1"
-embedding_model = "text-embedding-3-large"
-
-# Initialize Pinecone
-pinecone = Pinecone(api_key=pinecone_api_key)
-print(f"Pinecone Environment: {pinecone_env}")
-
-# Create index if it doesn't exist
-if pinecone_index_name not in pinecone.list_indexes().names():
-    pinecone.create_index(
-        name=pinecone_index_name,
-        dimension=3072,  # Based on the embedding model used
-        metric='cosine',
-        spec=ServerlessSpec(
-            cloud='aws',
-            region=pinecone_env
-        )
-    )
-index = pinecone.Index(pinecone_index_name)
+api_key = os.getenv("MISTRAL_API_KEY")
+embedding_model = "mistral-embed"
+chat_model = "mistral-tiny"
+client = MistralClient(api_key=api_key)
+embeddings = MistralEmbeddings(client, embedding_model)
+vector_store = None
 
 
 @app.route("/")
@@ -114,6 +110,8 @@ def index():
 
 @app.route("/process", methods=["POST"])
 def process_pdfs():
+    global vector_store
+
     pdf_files = request.files.getlist("pdf_files")
     if not pdf_files:
         return jsonify({"error": "No PDF files uploaded."}), 400
@@ -124,8 +122,7 @@ def process_pdfs():
             return jsonify({"error": "No text found in PDFs. Please check your files."}), 400
 
         chunks = get_text_chunks(text)
-        for i, chunk in enumerate(chunks):
-            index.upsert([(f"chunk_{i}", embeddings.embed_query(chunk))])
+        vector_store = create_vector_store(chunks, embeddings)
         return jsonify({"message": "Files processed successfully!"})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -133,16 +130,21 @@ def process_pdfs():
 
 @app.route("/ask", methods=["POST"])
 def ask_question():
+    global vector_store
+
     user_question = request.form.get("question")
     if not user_question:
         return jsonify({"error": "No question provided."}), 400
 
+    if not vector_store:
+        return jsonify({"error": "Please upload and process PDF files before asking questions."}), 400
+
     try:
-        response = index.query(user_question, top_k=5, include_metadata=True)
-        relevant_docs = [{"page_content": match["metadata"].get("text", "")} for match in response.matches]
-        qa_chain = create_qa_chain(client, embedding_model)
-        answer = qa_chain({"input_documents": relevant_docs, "question": user_question})
-        return jsonify({"answer": answer["output_text"]})
+        relevant_docs = vector_store.similarity_search(user_question)
+        qa_chain = create_qa_chain(client, chat_model)
+        response = qa_chain(
+            {"input_documents": relevant_docs, "question": user_question})
+        return jsonify({"answer": response["output_text"]})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

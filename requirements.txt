@@ -1,5 +1,7 @@
-pinecone-client
 Flask
 PyPDF2
 langchain
-dotenv
+langchain-community
+python-dotenv
+faiss-cpu
+mistralai==0.4.2
