@@ -13,7 +13,7 @@ class MistralEmbeddings(Embeddings):
     def __init__(self, client, model):
         self.client = client
         self.model = model
-        self.chunk_size = 8000  # Approximate number of characters
+        self.chunk_size = 8000 # increase for larger docs, decrease if more context needed
 
     def chunk_text(self, text: str) -> List[str]:
         return [text[i:i+self.chunk_size] for i in range(0, len(text), self.chunk_size)]
@@ -82,10 +82,7 @@ def create_qa_chain(client, model):
     return qa_function
 
 def main():
-    # Set page configuration
     st.set_page_config(page_title="AI Research Paper Analysis Chatbot")
-
-    # Title at the top
     st.title("Chat with Your Research PDFs")
 
     load_dotenv()
@@ -98,7 +95,6 @@ def main():
     if 'vector_store' not in st.session_state:
         st.session_state.vector_store = None
 
-    # This will create a container for the content, keeping the file upload section separate
     content_container = st.container()
 
     with content_container:
@@ -114,7 +110,6 @@ def main():
         elif user_question:
             st.warning("Please upload and process PDF files before asking questions.")
 
-    # Bottom container for file upload and processing button
     with st.expander("Upload PDFs", expanded=False):
         pdf_docs = st.file_uploader("Upload PDF files", type="pdf", accept_multiple_files=True)
         process_files = st.button("Process Files")
